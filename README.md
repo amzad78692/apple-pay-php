@@ -56,18 +56,33 @@ Extract the package to your web server directory:
 4. Create an **Apple Pay Payment Processing Certificate**
 5. Create an **Apple Pay Merchant Identity Certificate**
 
-#### B. Install Certificates
+#### B. Generate Certificate Files
 
-1. Download your merchant identity certificate and private key
-2. Convert to PEM format if needed:
+1. Generate a Certificate Signing Request (CSR) and private key:
+
    ```bash
-   # Convert .p12 to .pem
-   openssl pkcs12 -in merchant_id.p12 -out merchant_id.pem -clcerts -nokeys
-   openssl pkcs12 -in merchant_id.p12 -out merchant_id_key.pem -nocerts -nodes
+   openssl req -new -newkey rsa:2048 -nodes -keyout merchant_id.key -out merchant_id.csr -subj "/CN=merchant.com.yourwebsite"
    ```
-3. Place files in `apple_pay_merchant_id_certificates/` directory:
-   - `merchant_id.pem` - Your merchant certificate
-   - `merchant_id_key.pem` - Your merchant private key
+
+2. Submit the CSR to Apple Developer Console to get your merchant certificate
+
+3. Download the merchant certificate from Apple (usually as `merchant_id.cer`)
+
+4. Convert the Apple certificate to PEM format:
+
+   ```bash
+   openssl x509 -in merchant_id.cer -inform der -outform pem -out merchant_id.pem
+   ```
+
+5. Encrypt the private key with password and save as PEM:
+
+   ```bash
+   openssl rsa -in merchant_id.key -des3 -out merchant_id_key.pem -passout pass:22650262
+   ```
+
+6. Place the final files in `apple_pay_merchant_id_certificates/` directory:
+   - `merchant_id.pem` - Your merchant certificate (from step 4)
+   - `merchant_id_key.pem` - Your encrypted private key (from step 5)
 
 ### 3. Configuration
 
