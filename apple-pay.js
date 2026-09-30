@@ -80,10 +80,16 @@ async function onApplePayButtonClicked(event) {
     console.log("Validating merchant...", event);
     try {
       const response = await fetch(
-        "/apple-pay-php/ajax.php?action=apple-pay-merchant-validation"
+        "/apple-pay-php/ajax.php?action=apple-pay-merchant-validation&validation_url=" +
+          encodeURIComponent(event.validationURL)
       );
 
       const merchantSession = await response.json();
+      if (!merchantSession.status) {
+        console.error("Merchant validation rejected:", merchantSession);
+        session.abort();
+        return;
+      }
       console.log("Merchant session received:", merchantSession.response);
       session.completeMerchantValidation(merchantSession.response);
     } catch (error) {

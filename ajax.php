@@ -4,7 +4,7 @@ $applePayService = new ApplePayService();
 
 switch ($_REQUEST['action']) {
     case 'apple-pay-merchant-validation':
-        $response = $applePayService->authorizeMerchant();
+        $response = $applePayService->authorizeMerchant($_REQUEST['validation_url'] ?? null);
         echo json_encode($response);
         break;
 

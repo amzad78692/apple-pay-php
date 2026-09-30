@@ -8,8 +8,19 @@ class ApplePayService
         // Constructor can be used for initialization if needed
     }
 
-    public function authorizeMerchant()
+    public function authorizeMerchant($validationUrl = null)
     {
+        // Use the URL Safari provides so the session matches the device's environment
+        // (sandbox tester accounts use apple-pay-gateway-cert.apple.com). Only Apple hosts are allowed.
+        $validationHost = $validationUrl ? parse_url($validationUrl, PHP_URL_HOST) : null;
+        if (
+            !$validationUrl
+            || parse_url($validationUrl, PHP_URL_SCHEME) !== 'https'
+            || !preg_match('/^apple-pay-gateway(-[a-z0-9-]+)?\.apple\.com$/', (string) $validationHost)
+        ) {
+            $validationUrl = VALIDATION_URL;
+        }
+
         $postData = array(
             'merchantIdentifier' => MERCHANT_IDENTIFIER,
             'displayName' => DISPLAY_NAME,
@@ -19,7 +30,7 @@ class ApplePayService
         );
 
         $curlOptions = array(
-            CURLOPT_URL => VALIDATION_URL,
+            CURLOPT_URL => $validationUrl,
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($postData),
             CURLOPT_RETURNTRANSFER => true,
@@ -34,16 +45,18 @@ class ApplePayService
         curl_setopt_array($curlConnection, $curlOptions);
         $response = curl_exec($curlConnection);
         $err = curl_error($curlConnection);
+        $httpCode = curl_getinfo($curlConnection, CURLINFO_HTTP_CODE);
         curl_close($curlConnection);
 
         if ($err) {
             return ['status' => false, 'message' => $err];
-        } else {
-            if (is_string($response)) {
-                $response = json_decode($response, true);
-            }
-            return ['status' => true, 'response' => $response];
         }
+
+        $decoded = json_decode($response, true);
+        if ($httpCode !== 200 || empty($decoded['merchantSessionIdentifier'])) {
+            return ['status' => false, 'message' => $decoded['statusMessage'] ?? $response, 'http_code' => $httpCode];
+        }
+        return ['status' => true, 'response' => $decoded];
     }
 
     public function processPaymentResponse($applePayResponse, $amount, $reference, $paymentGateway = 'KNET')
